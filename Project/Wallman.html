@@ -1,0 +1,166 @@
+<html>
+<head>
+    <script src="/socket.io/socket.io.js"></script>
+    <link rel="stylesheet" type="text/css" href="Wallman.css">
+</head>
+<body>
+<div id="cdiv"> <canvas id="canvas" width="1000" height="500" style="background:rgb(233,233,233)"></canvas> </div>
+<script>
+
+    var socket = io();
+    socket.on('message', function(data){
+        console.log(data);
+    });
+
+    socket.on('status', function(data){
+        for (var key in data) {
+            if (data.hasOwnProperty(key) && players.hasOwnProperty(key)) {
+                players[key].x = data[key].x;
+                players[key].y = data[key].y;
+                players[key].direction = data[key].direction;
+            }
+        }
+    });
+
+    // Add a connected player to the players
+    socket.on('addPlayer', function(data){
+        if (players[data.id] != null) return;
+        else {
+            players[data.id] = new Player();
+            socket.emit('playerAdded', { id: data.id});
+            console.log(players[data.id]);
+            setBomb(data.id)
+        }
+    });
+
+    // Delete the disconnected player from players
+    socket.on('deletePlayer', function(data){
+        if (players[data.id] == null) return;
+        else delete players[data.id];
+    });
+
+
+    window.onload = Start();
+
+
+    var canvas;
+    var ctx;
+    var WIDTH = 1000;
+    var HEIGHT = 500;
+
+    function Player (){
+        this.x = 30;
+        this.y = 30;
+        this.down = new Image ();
+        this.left = new Image ();
+        this.up = new Image ();
+        this.right = new Image ();
+        this.bomb1 = new Image();
+        this.bomb2 = new Image();
+        this.bomb = new Image();
+        this.direction = "down";
+    }
+
+    var players = {};
+
+
+    var setBomb = function(id) {
+        setInterval(function () {
+            var player1 = players[id];
+            if (player1.bomb == player1.bomb1) player1.bomb = player1.bomb2
+            else player1.bomb = player1.bomb1
+        }, 1000)
+    }
+
+
+
+    socket.on("image", function(img) {
+        if (img.image) {
+                switch (img.direction) {
+                    case "up":
+                        players[img.socketid].up.src = 'data:image/jpeg;base64,' + img.buffer;
+                        break;
+                    case "down":
+                        players[img.socketid].down.src = 'data:image/jpeg;base64,' + img.buffer;
+                        break;
+                    case "right":
+                        players[img.socketid].right.src = 'data:image/jpeg;base64,' + img.buffer;
+                        break;
+                    case "left":
+                        players[img.socketid].left.src = 'data:image/jpeg;base64,' + img.buffer;
+                        break;
+                    case "bomb1":
+                        players[img.socketid].bomb1.src = 'data:image/jpeg;base64,' + img.buffer;
+                        break;
+                    case "bomb2":
+                        players[img.socketid].bomb2.src = 'data:image/jpeg;base64,' + img.buffer;
+                        break;
+                }
+        }
+    });
+
+
+    function Draw() {
+
+        for(var p in players) {
+            var player1 = players[p];
+            ctx.drawImage(player1.bomb, 10, 10);
+            switch (player1.direction) {
+                case "up":
+                    ctx.drawImage(player1.up, player1.x, player1.y);
+                    break;
+                case "down":
+                    ctx.drawImage(player1.down, player1.x, player1.y);
+                    break;
+                case "right":
+                    ctx.drawImage(player1.right, player1.x, player1.y);
+                    break;
+                case "left":
+                    ctx.drawImage(player1.left, player1.x, player1.y);
+                    break;
+            }
+        }
+
+
+    }
+
+    function preDraw() {
+        ctx.fillStyle = "rgb(233,233,233)";
+        ctx.beginPath();
+        ctx.rect(0, 0, WIDTH, HEIGHT);
+        ctx.closePath();
+        ctx.fill();
+    }
+
+    function Update() {
+        preDraw();
+        Draw();
+    }
+
+    function Start() {
+        canvas = document.getElementById("canvas");
+        ctx = canvas.getContext("2d");
+        return setInterval(Update, 30);
+    }
+
+
+
+
+    window.addEventListener('keydown', KeyDown);
+
+
+    function KeyDown(evt){
+
+        socket.emit('keydown', { keyCode: evt.keyCode });
+
+    }
+
+
+</script>
+
+
+
+
+
+</body>
+</html>
